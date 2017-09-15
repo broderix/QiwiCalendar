@@ -1,0 +1,20 @@
+{
+  "name": "qiwicalendar",
+  "description": "https://apimarket.qiwi.com/",
+  "main": "index.js",
+  "authors": [
+    "Kirill Danilov aka @broderix"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/broderix/QiwiCalendar",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "boostrap#^3.3.7"
+  }
+}
