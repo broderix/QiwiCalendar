@@ -1,0 +1,39 @@
+/*.jumbotron {
+  background-image: url("/images/calendar.jpg");
+  background-color: unset;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center;
+}*/
+
+/*.jumbotron::after {
+  opacity: 0.5;
+}*/
+@import url('https://fonts.googleapis.com/css?family=Alegreya+Sans');
+body {
+  font-family: 'Alegreya Sans', sans-serif;
+  font-size: 18px;
+  /*background-image: url("/images/calendar.jpg");
+  background-color: unset;
+  background-repeat: no-repeat;
+  background-position: center;*/
+}
+
+.footer{
+  margin-top: 40px;
+}
+
+.q-middle-row {
+  padding-right: 60px;
+  padding-left: 60px;
+}
+
+.q-img {
+    width: 270px;
+    height: auto;
+}
+
+.jumbotron {
+  background-color: unset;
+  color: black;
+}
