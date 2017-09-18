@@ -42,17 +42,25 @@
       <div class="col-md-4">
         <h2>Шаг №1</h2>
         <p>Авторизируйтесь в GoogleCalendar, чтобы получить доступ к календарю</p>
+        <% if (google) { %>
+        <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+        <% } else { %>
         <p><a class="btn btn-lg btn-primary" href="/googleAuth" role="button">Войти с Google</a></p>
+        <% } %>
       </div>
       <div class="col-md-4">
         <h2>Шаг №2</h2>
         <p>Авторизируйтесь в Qiwi, чтобы иметь возможность оплачивать</p>
-        <p><a class="btn btn-lg btn-primary" href="/qiwiAuth" role="button">Войти с Qiwi</a></p>
+        <% if (qiwi) { %>
+        <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+        <% } else { %>
+        <p><a class="btn btn-lg btn-primary" href="#" role="button" id="qiwi_auth_button">Войти с Qiwi</a></p>
+        <% } %>
       </div>
       <div class="col-md-4">
         <h2>Шаг №3</h2>
         <p>Создайте событие, "карманные деньги 9823454623", можете сделать регулярным</p>
-        <p><a class="btn btn-lg btn-success" href="/crateEvent" role="button">Создать событие</a></p>
+        <p><a class="btn btn-lg btn-success" href="#" role="button" id="create_event_button">Создать событие</a></p>
       </div>
     </div>
 
@@ -64,6 +72,25 @@
     <script src="/bower/jquery/dist/jquery.slim.min.js"></script>
     <!-- <script src="/bower/bootstrap/js/popper.min.js"></script> -->
     <script src="/bower/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script>
+      var googleAuth = <%=(google ? true : false)%>;
+      var qiwiAuth = <%=(qiwi ? true : false)%>;
+      $(function() {
+        $('#qiwi_auth_button').click(function() {
+          var token = prompt("Введите qiwi token. Его можно получить по адресу https://qiwi.com/api");
+          if (token) {
+            window.location.href = '/qiwiAuth?token=' + token;
+          }
+        });
+        $('#create_event_button').click(function() {
+          if (googleAuth && qiwiAuth) {
+            window.location.href = '/createEvent';
+          } else {
+            alert('Пожалуйста, выполните шаги 1 и 2');
+          }
+        });
+      });
+    </script>
 </body>
 
 </html>

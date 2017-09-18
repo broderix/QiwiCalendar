@@ -5,7 +5,7 @@
   "authors": [
     "Kirill Danilov aka @broderix"
   ],
-  "license": "ISC",
+  "license": "MIT",
   "homepage": "https://github.com/broderix/QiwiCalendar",
   "ignore": [
     "**/.*",
