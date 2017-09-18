@@ -1,5 +1,8 @@
+#!/usr/bin/env node
+
 var path = require('path');
 var fs = require('fs');
+// var _ = require('underscore');
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
@@ -80,6 +83,7 @@ app.get('/qiwiAuth', function(req, res) {
     req.session.qiwiWallet = new Qiwi(req.query.token);
     req.session.qiwiToken = req.query.token;
   }
+  req.session.qiwiPaidEvents = req.session.qiwiPaidEvents || [];
   res.redirect("/");
 });
 app.get('/createEvent', function(req, res) {
@@ -109,6 +113,41 @@ app.get('/oauth2callback', function(req, res) {
 });
 app.post('/googlecalendarpushcallback', function(req, res) {
   // console.log(req);
+  // var channelId = res.get('x-goog-channel-id');
+  // var resId = res.get('x-goog-resource-id');
+  // var messageNumber = res.get('x-goog-message-number')
+  console.log(req.headers);
+  //https://calendar.google.com/calendar/render?action=TEMPLATE&text=%D0%9F%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D1%81%D1%82%D0%B8+%D1%81%D1%8B%D0%BD%D1%83+1000+%D1%80%D1%83%D0%B1+9262202988&dates=20140127T224000Z/20140320T221500Z&details=&location=&sf=true&output=xml#eventpage_6
+  listEvents(getGoogleAuth(req.session.googleToken), function(events) {
+    //todo pay for test only last event, immediately
+    if (event.length > 0) {
+      var event = events[0];
+      var phoneRegExp = /\d+/i;
+      var result = phoneRegExp.exec(event.summary);
+      if (result && result[0].length == 10) {
+        var account = result[0];
+        var paid = req.session.qiwiPaidEvents.indexOf(event.id);
+        if (paid != -1) {
+          req.session.qiwiWallet.toWallet(
+          {
+            amount: '1', 
+            comment: 'test appcontest', 
+            account: account
+          }, 
+          function (err, data) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(data);
+              req.session.qiwiPaidEvents.push(event.id);
+            }
+          });
+        } else {
+          console.log('account ' + account + ' already paid');
+        }
+      }
+    }
+  });
 });
 app.listen(3000, function() {
   console.log('QiwiCalendar app listening on port 3000!')
@@ -133,7 +172,7 @@ function getGoogleAuth(token) {
   return _oauth2Client;
 }
 
-function listEvents(auth) {
+function listEvents(auth, callback) {
   var calendar = google.calendar('v3');
   calendar.events.list({
     auth: auth,
@@ -148,6 +187,7 @@ function listEvents(auth) {
       return;
     }
     var events = response.items;
+    if (callback) callback(events);
     if (events.length == 0) {
       console.log('No upcoming events found.');
     } else {
@@ -156,6 +196,7 @@ function listEvents(auth) {
         var event = events[i];
         var start = event.start.dateTime || event.start.date;
         console.log('%s - %s', start, event.summary);
+        // console.log(event);
       }
     }
   });
@@ -213,4 +254,12 @@ Content-Type: application/json
     console.log(response);
     callback(err, response);
   });
+}
+
+function getEvent(auth, resId, callback) {
+  // calendar.events.
+}
+
+function syncEvents(auth, resId, callback) {
+  // calendar.events.
 }
