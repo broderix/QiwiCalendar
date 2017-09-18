@@ -107,8 +107,8 @@ app.get('/oauth2callback', function(req, res) {
     res.redirect('/');
   });
 });
-app.get('/googlecalendarpushcallback', function(req, res) {
-  console.log(req.query);
+app.post('/googlecalendarpushcallback', function(req, res) {
+  // console.log(req);
 });
 app.listen(3000, function() {
   console.log('QiwiCalendar app listening on port 3000!')
