@@ -44,6 +44,10 @@
         <p>Авторизируйтесь в GoogleCalendar, чтобы получить доступ к календарю</p>
         <% if (google) { %>
         <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+          <br/>
+          <a href="#" id="subscribe">Получать уведомления о платежах?</a>
+          <br/>
+          <a href="#" id="logout">Выйти</a>
         <% } else { %>
         <p><a class="btn btn-lg btn-primary" href="/googleAuth" role="button">Войти с Google</a></p>
         <% } %>
@@ -60,7 +64,8 @@
       <div class="col-md-4">
         <h2>Шаг №3</h2>
         <p>Создайте событие, "карманные деньги +79823454623", можете сделать регулярным</p>
-        <p><a class="btn btn-lg btn-success" target="_blank" href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Перевести+сыну+денег+%2B79823454623&dates=20170920T150000Z/20170920T154000Z&details=&location=&sf=true&output=xml#eventpage_6" role="button" id="create_event_button">Создать событие</a></p>
+        <p><a class="btn btn-lg btn-success" target="_blank"
+              href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Перевести+сыну+денег+%2B79823454623&dates=20170920T190000Z/20170920T194000Z&details=&location=&sf=true&output=xml#eventpage_6" role="button" id="create_event_button">Создать событие</a></p>
       </div>
     </div>
 
@@ -68,10 +73,11 @@
       <p>&copy; QiwiCalendar 2017</p>
     </footer>
 
-
-    <script src="/bower/jquery/dist/jquery.slim.min.js"></script>
+    <script src="/bower/jquery/dist/jquery.js"></script>
     <!-- <script src="/bower/bootstrap/js/popper.min.js"></script> -->
     <script src="/bower/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="//www.gstatic.com/firebasejs/3.6.8/firebase.js"></script>
+    <script type="text/javascript" src="/firebase_subscribe.js?#3"></script>
     <script>
       var googleAuth = <%=(google ? true : false)%>;
       var qiwiAuth = <%=(qiwi ? true : false)%>;
@@ -89,8 +95,16 @@
             alert('Пожалуйста, выполните шаги 1 и 2');
           }
         });
+        $('#logout').click(function() {
+          window.localStorage.setItem('sentFirebaseMessagingToken', false);
+          window.location.href = '/logout';
+        });
+        if (window.localStorage.getItem('sentFirebaseMessagingToken') !== false) {
+          $('#subscribe').hide();
+        }
       });
     </script>
+    <!-- Yandex.Metrika counter --> <script type="text/javascript" > (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter46013703 = new Ya.Metrika({ id:46013703, clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true, trackHash:true, ut:"noindex" }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks"); </script> <noscript><div><img src="https://mc.yandex.ru/watch/46013703?ut=noindex" style="position:absolute; left:-9999px;" alt="" /></div></noscript> <!-- /Yandex.Metrika counter -->
 </body>
 
 </html>

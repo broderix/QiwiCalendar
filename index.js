@@ -6,6 +6,8 @@ var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
+var admin = require("firebase-admin");
+var serviceAccount = require('./qiwicalendar-firebase-adminsdk.json');
 var cookieSession = require('cookie-session');
 var clone = require('clone');
 var async = require('async');
@@ -19,10 +21,12 @@ var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
 var credentials = {};
 var googleTokenByChannelId = [];
 var googleCalendars = [];
+var pushTokens = [];
 var qiwiPaidEvents = [];
 var qiwiWallets = [];
 var Qiwi = require('node-qiwi-api').Qiwi;
 var express = require('express');
+var bodyParser = require('body-parser');
 var app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -37,6 +41,12 @@ app.use(function(req, res, next) {
   next();
 });
 app.use('/', express.static('./public'));
+app.use(bodyParser.json()); // for parsing application/json
+app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://qiwicalendar.firebaseio.com"
+});
 (function init() {
   fs.readFile('client_secret.json', function processClientSecrets(err, content) {
     if (err) {
@@ -47,6 +57,7 @@ app.use('/', express.static('./public'));
   });
 })();
 app.get('/', function(req, res) {
+  console.log('=============/index');
   var wallet = qiwiWallets[req.session.googleCode] || {};
   console.log("wallet.token=" + wallet.token);
   console.log("googleCode=" + req.session.googleCode);
@@ -67,6 +78,7 @@ app.get('/', function(req, res) {
   });
 });
 app.get('/logout', function(req, res) {
+  console.log('=============/logout');
   var id = googleCalendars[req.session.googleCode] ? googleCalendars[req.session.googleCode]['id'] : 0;
   var resId = googleCalendars[req.session.googleCode] ? googleCalendars[req.session.googleCode]['resourceId'] : 0;
   stopWatch(getGoogleAuth(req.session.googleToken), id, resId);
@@ -74,6 +86,7 @@ app.get('/logout', function(req, res) {
   res.redirect('/');
 });
 app.get('/googleAuth', function(req, res) {
+  console.log('=============/googleAuth');
   if (req.session.googleToken) {
     getOAuth2Client().credentials = JSON.parse(req.session.googleToken);
     res.redirect('/');
@@ -86,6 +99,7 @@ app.get('/googleAuth', function(req, res) {
   }
 });
 app.get('/qiwiAuth', function(req, res) {
+  console.log('=============/qiwiAuth');
   if (!req.session.googleCode) {
     res.redirect("/?authGoogleFirst");
   }
@@ -98,10 +112,12 @@ app.get('/qiwiAuth', function(req, res) {
   res.redirect("/");
 });
 app.get('/createEvent', function(req, res) {
+  console.log('=============/createEvent');
   res.redirect('/?done=1');
 });
 // http://127.0.0.1:3000/oauth2callback?code=4/tbRgf5SBRGKzuhZE7AP-6KNAU0d2xaPNUiixRaxwXyg#
 app.get('/oauth2callback', function(req, res) {
+  console.log('=============/oauth2callback');
   console.log(req.query.code);
   req.session.googleCode = req.query.code;
   // res.redirect('/?google=true&code=' + req.query.code);
@@ -125,6 +141,7 @@ app.get('/oauth2callback', function(req, res) {
   });
 });
 app.post('/googlecalendarpushcallback', function(req, res) {
+  console.log('=============/googlecalendarpushcallback');
   // console.log(req);
   // var channelId = res.get('x-goog-channel-id');
   // var resId = res.get('x-goog-resource-id');
@@ -160,6 +177,9 @@ app.post('/googlecalendarpushcallback', function(req, res) {
                 } else {
                   console.log('qiwi success data=' + data + ' event.id=' + event.id);
                   qiwiPaidEvents.push(event.id);
+                  if (pushTokens[googleCode]) {
+                    sendPush(pushTokens[googleCode], 'Платеж выполнен для события: ' + event.summary);
+                  }
                 }
                 callback(err);
               });
@@ -179,12 +199,53 @@ app.post('/googlecalendarpushcallback', function(req, res) {
     console.log('googleToken not found');
   }
 });
+//test purpose only
+app.get('/push', (req, res) => {
+  console.log('=============/push');
+  console.log(pushTokens[req.session.googleCode]);
+  if (pushTokens[req.session.googleCode]) {
+    sendPush(pushTokens[req.session.googleCode], 'some text');
+  }
+  res.json('ok');
+});
+app.post('/savePushToken', (req, res) => {
+  console.log('=============/savePushToken');
+  console.log('push token=', req.body.token);
+  if (req.body && req.body.token) {
+    pushTokens[req.session.googleCode] = req.body.token;
+    res.json({success: true});
+  } else {
+    res.json({success: false});
+  }
+});
 app.listen(3000, function() {
   console.log('QiwiCalendar app listening on port 3000!')
-})
+});
+// var registrationToken = "AAAAIkr8uN0:APA91bGe-hSnN76zKAcz4i2lKtQHMuPmMVn5wdoZngLdAU5eJ8TFx6F4faC27I7uOhtl3akHpzKqIL2nVzfkqkr3mA6Rso7HUcMM2-ibSl350lbLfb7OzSzs8XOxvuX9ybgZloq2UEPT";
+// See the "Defining the message payload" section below for details
+// on how to define a message payload.
+function sendPush(token, text) {
+  var payload = {
+    data: {
+      title: 'Внимание',
+      body: text,
+      click_action: '/'
+    }
+  };
+// Send a message to the device corresponding to the provided
+// registration token.
+  admin.messaging().sendToDevice(token, payload)
+    .then(function(response) {
+      // See the MessagingDevicesResponse reference documentation for
+      // the contents of response.
+      console.log("Successfully sent message:", response);
+    })
+    .catch(function(error) {
+      console.log("Error sending message:", error);
+    });
+}
 
 var oauth2Client = null;
-
 function getOAuth2Client() {
   if (!oauth2Client) {
     var clientSecret = credentials.web.client_secret;
