@@ -50,17 +50,17 @@
       </div>
       <div class="col-md-4">
         <h2>Шаг №2</h2>
-        <p>Авторизируйтесь в Qiwi, чтобы иметь возможность оплачивать</p>
+        <p>Введите token Qiwi, если еще не создай перейдите на <a target="_blank" href="https://qiwi.com/api">https://qiwi.com/api</a></p>
         <% if (qiwi) { %>
         <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
         <% } else { %>
-        <p><a class="btn btn-lg btn-primary" href="#" role="button" id="qiwi_auth_button">Войти с Qiwi</a></p>
+        <p><a class="btn btn-lg btn-primary" href="#" role="button" id="qiwi_auth_button">Ввести token Qiwi</a></p>
         <% } %>
       </div>
       <div class="col-md-4">
         <h2>Шаг №3</h2>
-        <p>Создайте событие, "карманные деньги 9823454623", можете сделать регулярным</p>
-        <p><a class="btn btn-lg btn-success" href="#" role="button" id="create_event_button">Создать событие</a></p>
+        <p>Создайте событие, "карманные деньги +79823454623", можете сделать регулярным</p>
+        <p><a class="btn btn-lg btn-success" target="_blank" href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Перевести+сыну+денег+%2B79823454623&dates=20170920T150000Z/20170920T154000Z&details=&location=&sf=true&output=xml#eventpage_6" role="button" id="create_event_button">Создать событие</a></p>
       </div>
     </div>
 

@@ -8,6 +8,7 @@ var google = require('googleapis');
 var googleAuth = require('google-auth-library');
 var cookieSession = require('cookie-session');
 var clone = require('clone');
+var async = require('async');
 // If modifying these scopes, delete your previously saved credentials
 // at ~/.credentials/calendar-nodejs-quickstart.json
 var DOMAIN_NAME = 'mabler.ru';
@@ -16,6 +17,10 @@ var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
   process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
 var credentials = {};
+var googleTokenByChannelId = [];
+var googleCalendars = [];
+var qiwiPaidEvents = [];
+var qiwiWallets = [];
 var Qiwi = require('node-qiwi-api').Qiwi;
 var express = require('express');
 var app = express();
@@ -42,7 +47,7 @@ app.use('/', express.static('./public'));
   });
 })();
 app.get('/', function(req, res) {
-  var wallet = req.session.qiwiWallet || {};
+  var wallet = qiwiWallets[req.session.googleCode] || {};
   console.log("wallet.token=" + wallet.token);
   console.log("googleCode=" + req.session.googleCode);
   console.log("googleToken=" + req.session.googleToken);
@@ -62,6 +67,9 @@ app.get('/', function(req, res) {
   });
 });
 app.get('/logout', function(req, res) {
+  var id = googleCalendars[req.session.googleCode] ? googleCalendars[req.session.googleCode]['id'] : 0;
+  var resId = googleCalendars[req.session.googleCode] ? googleCalendars[req.session.googleCode]['resourceId'] : 0;
+  stopWatch(getGoogleAuth(req.session.googleToken), id, resId);
   req.session = null;
   res.redirect('/');
 });
@@ -78,12 +86,15 @@ app.get('/googleAuth', function(req, res) {
   }
 });
 app.get('/qiwiAuth', function(req, res) {
-  //res.redirect("https://qiwi.com/api");
+  if (!req.session.googleCode) {
+    res.redirect("/?authGoogleFirst");
+  }
   if (req.query.token) {
-    req.session.qiwiWallet = new Qiwi(req.query.token);
+    qiwiWallets[req.session.googleCode] = new Qiwi(req.query.token);
+    console.log('key for wallet' + req.session.googleCode);
+    console.log(qiwiWallets[req.session.googleCode]);
     req.session.qiwiToken = req.query.token;
   }
-  req.session.qiwiPaidEvents = req.session.qiwiPaidEvents || [];
   res.redirect("/");
 });
 app.get('/createEvent', function(req, res) {
@@ -104,7 +115,9 @@ app.get('/oauth2callback', function(req, res) {
     req.session.googleToken = token;
     req.session.googleWatchCalendar = {};
     //todo fix: replace req.session.googleCode with user uuid
-    watchCalendar(getGoogleAuth(req.session.googleToken), req.session.googleCode,function(response) {
+    watchCalendar(getGoogleAuth(req.session.googleToken), req.session.googleCode, function(response) {
+      googleTokenByChannelId[req.session.googleCode] = req.session.googleToken;
+      googleCalendars[req.session.googleCode] = response;
       req.session.googleWatchCalendar = response;
       console.log('watchCalendar response=', response);
     });
@@ -118,36 +131,53 @@ app.post('/googlecalendarpushcallback', function(req, res) {
   // var messageNumber = res.get('x-goog-message-number')
   console.log(req.headers);
   //https://calendar.google.com/calendar/render?action=TEMPLATE&text=%D0%9F%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D1%81%D1%82%D0%B8+%D1%81%D1%8B%D0%BD%D1%83+1000+%D1%80%D1%83%D0%B1+9262202988&dates=20140127T224000Z/20140320T221500Z&details=&location=&sf=true&output=xml#eventpage_6
-  listEvents(getGoogleAuth(req.session.googleToken), function(events) {
-    //todo pay for test only last event, immediately
-    if (event.length > 0) {
-      var event = events[0];
-      var phoneRegExp = /\d+/i;
-      var result = phoneRegExp.exec(event.summary);
-      if (result && result[0].length == 10) {
-        var account = result[0];
-        var paid = req.session.qiwiPaidEvents.indexOf(event.id);
-        if (paid != -1) {
-          req.session.qiwiWallet.toWallet(
-          {
-            amount: '1', 
-            comment: 'test appcontest', 
-            account: account
-          }, 
-          function (err, data) {
-            if (err) {
-              console.log(err);
-            } else {
-              console.log(data);
-              req.session.qiwiPaidEvents.push(event.id);
-            }
-          });
+  var googleCode = req.headers['x-goog-channel-id'];
+  console.log(googleCode);
+  console.log(googleTokenByChannelId);
+  var googleToken = googleTokenByChannelId[googleCode];
+  if (googleToken) {
+    listEvents(getGoogleAuth(googleToken), function(events) {
+      //todo pay for test only last event, immediately
+      // for (var i in events) {
+      async.each(events, function(event, callback) {
+        var phoneRegExp = /\+\d{11}/i;
+        var result = phoneRegExp.exec(event.summary);
+        console.log(result);
+        if (result && result[0].length == 12) {
+          var account = result[0];
+          console.log(qiwiPaidEvents);
+          var paid = qiwiPaidEvents.indexOf(event.id);
+          if (paid == -1) {
+            qiwiWallets[googleCode].toWallet({
+                amount: 1,
+                comment: 'test appcontest',
+                account: account
+              },
+              function (err, data) {
+                console.log('Qiwi Wallet operation');
+                if (err) {
+                  console.log('error', err);
+                } else {
+                  console.log('qiwi success data=' + data + ' event.id=' + event.id);
+                  qiwiPaidEvents.push(event.id);
+                }
+                callback(err);
+              });
+          } else {
+            console.log('account ' + account + ' already paid for event.id=' + event.id);
+          }
         } else {
-          console.log('account ' + account + ' already paid');
+          console.log('account length < 10');
         }
-      }
-    }
-  });
+      }, function(err) {
+        if( err ) {
+          console.log('Qiwi failed to pay' + err);
+        }
+      });
+    });
+  } else {
+    console.log('googleToken not found');
+  }
 });
 app.listen(3000, function() {
   console.log('QiwiCalendar app listening on port 3000!')
@@ -178,7 +208,7 @@ function listEvents(auth, callback) {
     auth: auth,
     calendarId: 'primary',
     timeMin: (new Date()).toISOString(),
-    maxResults: 10,
+    maxResults: 20,
     singleEvents: true,
     orderBy: 'startTime'
   }, function(err, response) {
@@ -191,18 +221,29 @@ function listEvents(auth, callback) {
     if (events.length == 0) {
       console.log('No upcoming events found.');
     } else {
-      console.log('Upcoming 10 events:');
-      for (var i = 0; i < events.length; i++) {
-        var event = events[i];
-        var start = event.start.dateTime || event.start.date;
-        console.log('%s - %s', start, event.summary);
-        // console.log(event);
-      }
+      console.log('Upcoming events:' + events.length);
+      // for (var i = 0; i < events.length; i++) {
+      //   var event = events[i];
+      //   var start = event.start.dateTime || event.start.date;
+      //   console.log('%s - %s', start, event.summary);
+      //   // console.log(event);
+      // }
     }
   });
 }
 
+/**
+ * { kind: 'api#channel',
+0|index    |   id: '4/cp-UHxngYu8YYEvfVSCn8BhsrnM67vPC5SoqnXuDskw',
+0|index    |   resourceId: 'hz8FEdUBceJGI_KZ7CpXiXUmXZc',
+0|index    |   resourceUri: 'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=250&orderBy=START_TIME&singleEvents=true&alt=json',
+0|index    |   expiration: '1505902865000' }
+ * @param auth
+ * @param id
+ * @param resourceId
+ */
 function stopWatch(auth, id, resourceId) {
+  if (!auth || !id || !resourceId) return;
   var calendar = google.calendar('v3');
   calendar.channels.stop({
     auth: auth,
