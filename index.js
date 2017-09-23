@@ -164,7 +164,7 @@ app.post('/googlecalendarpushcallback', function(req, res) {
           var account = result[0];
           console.log(qiwiPaidEvents);
           var paid = qiwiPaidEvents.indexOf(event.id);
-          if (paid == -1) {
+          if (paid == -1 && qiwiWallets[googleCode]) {
             qiwiWallets[googleCode].toWallet({
                 amount: 1,
                 comment: 'test appcontest',
